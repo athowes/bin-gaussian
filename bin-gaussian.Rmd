@@ -79,7 +79,7 @@ plot(result_half$rho)
 ```
 
 ```{r}
-hist_fun(result)
+hist_fun(result_half)
 ```
 
 # Conclusions, things to add
