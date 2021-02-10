@@ -1,0 +1,90 @@
+---
+title: "Binomial of sum of Gaussians versus sum of binomial of Gaussians"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r}
+logistic <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
+library(ggplot2)
+library(magrittr)
+```
+
+# IID latent field
+
+**Without aggregation**: $y = \sum_{i = 1}^n y_i$, $y_i \sim \text{Bin}(m, \rho_i)$, $\rho_i \sim \text{Logitnormal}(\mu, \sigma^2)$
+
+**With aggregation**: $y \sim \text{Bin}(nm, \bar \rho)$, $\bar \rho = \frac{1}{n} \sum_{i = 1}^n \rho_i$, $\rho_i \sim \text{Logitnormal}(\mu, \sigma^2)$
+
+```{r}
+experiment <- function(nsim, n, phi_mean, phi_sd, y_sample_size) {
+  phi <- rnorm(n, phi_mean, phi_sd)
+  rho <- logistic(phi)
+  m <- rep(y_sample_size, n)
+  
+  # Without aggregation
+  y <- replicate(nsim, rbinom(y_sample_size, m, rho), simplify = FALSE)
+  y <- lapply(y, sum)
+  
+  # With aggregation (at the level of the latent field)
+  y_agg <- replicate(nsim, rbinom(1, sum(m), mean(rho)), simplify = FALSE)
+  
+  return(list(y = unlist(y), y_agg = unlist(y_agg), phi = phi, rho = rho))
+}
+```
+
+## $\rho$ small setting (disease)
+
+```{r}
+nsim <- 500
+n <- 36
+result <- experiment(nsim, n, -2.5, 0.5, 30)
+```
+
+This is what the underlying latent field looks like for these settings:
+
+```{r}
+plot(result$rho)
+```
+
+And then the difference between the truth and the aggregated approximation:
+
+```{r}
+hist_fun <- function(result) {
+  data.frame(type = c(rep("No aggregation (truth)", nsim), rep("Aggregation (approximation)", nsim)),
+             y    = c(result$y, result$y_agg)) %>%
+  ggplot() +
+  geom_histogram(aes(x = y, fill = type), alpha = 0.5, position = "identity")
+}
+
+hist_fun(result)
+```
+
+## $\rho \approx 0.5$ setting (elections)
+
+As before but with different `phi_mean` settings:
+
+```{r}
+result_half <- experiment(nsim, n, 0, 0.5, 30)
+```
+
+```{r}
+plot(result_half$rho)
+```
+
+```{r}
+hist_fun(result)
+```
+
+# Conclusions, things to add
+
+* Aggregation over-estimates the truth
+* Unsure about the difference between smaller $\rho$ and $\rho \approx 0.5$ settings. A lot of the apparent difference is because you get more samples as $\rho$ is larger the the differences become clearer. Could increase play with settings more on this
+* Should test latent field with spatial structure e.g. ICAR latent field and so on
+* What is the effect of varying `sd_phi`? What is the effect of varying `y_sample_size`?
