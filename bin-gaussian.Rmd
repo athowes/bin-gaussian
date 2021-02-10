@@ -8,10 +8,6 @@ editor_options:
 ---
 
 ```{r}
-logistic <- function(x) {
-  exp(x) / (1 + exp(x))
-}
-
 library(ggplot2)
 library(magrittr)
 ```
@@ -25,15 +21,15 @@ library(magrittr)
 ```{r}
 experiment <- function(nsim, n, phi_mean, phi_sd, y_sample_size) {
   phi <- rnorm(n, phi_mean, phi_sd)
-  rho <- logistic(phi)
+  rho <- plogis(phi)
   m <- rep(y_sample_size, n)
   
   # Without aggregation
-  y <- replicate(nsim, rbinom(y_sample_size, m, rho), simplify = FALSE)
+  y <- replicate(nsim, rbinom(n, m, rho), simplify = FALSE)
   y <- lapply(y, sum)
   
   # With aggregation (at the level of the latent field)
-  y_agg <- replicate(nsim, rbinom(1, sum(m), mean(rho)), simplify = FALSE)
+  y_agg <- replicate(nsim, rbinom(1, sum(m), weighted.mean(rho)), simplify = FALSE)
   
   return(list(y = unlist(y), y_agg = unlist(y_agg), phi = phi, rho = rho))
 }
@@ -66,6 +62,12 @@ hist_fun <- function(result) {
 hist_fun(result)
 ```
 
+```{r}
+sd(result$y)
+sd(result$y_agg)
+sd(result$y_agg) / sd(result$y) # Ratio
+```
+
 ## $\rho \approx 0.5$ setting (elections)
 
 As before but with different `phi_mean` settings:
@@ -82,9 +84,15 @@ plot(result_half$rho)
 hist_fun(result_half)
 ```
 
+```{r}
+sd(result_half$y)
+sd(result_half$y_agg)
+sd(result_half$y_agg) / sd(result_half$y) # Ratio
+```
+
+
 # Conclusions, things to add
 
-* Aggregation over-estimates the truth
-* Unsure about the difference between smaller $\rho$ and $\rho \approx 0.5$ settings. A lot of the apparent difference is because you get more samples as $\rho$ is larger the the differences become clearer. Could increase play with settings more on this
+* Standard deviation of aggregation overestimates true standard deviation, by a larger ratio in the smaller $\rho$ setting than the larger $\rho$ setting
 * Should test latent field with spatial structure e.g. ICAR latent field and so on
 * What is the effect of varying `sd_phi`? What is the effect of varying `y_sample_size`?
